@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptChat - Maintenance</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #f8fafc;
+            --accent-color: #38bdf8;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* En-tête */
+        #header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            max-width: 800px;
+            padding: 0 20px;
+        }
+
+        #logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 15px;
+            background: var(--accent-color); /* Remplace par ton image plus tard */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 2rem;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+        }
+
+        #status-text h1 { margin: 0; font-size: 1.5rem; color: var(--accent-color); }
+        #status-text p { margin: 5px 0 0; opacity: 0.8; }
+
+        /* Jeu */
+        canvas {
+            border: 4px solid #1e293b;
+            border-radius: 10px;
+            background-color: #1e293b;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 90vw;
+            max-height: 60vh;
+        }
+
+        #instructions {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            opacity: 0.6;
+        }
+
+        .btn-start {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 5px;
+            color: var(--bg-color);
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <div id="logo">
+            <img id="logoImg" src="https://via.placeholder.com/80/38bdf8/ffffff?text=CC" alt="Logo" style="width:100%; border-radius:15px;">
+        </div>
+        <div id="status-text">
+            <h1>Le serveur est dodo... 💤</h1>
+            <p>Le Raspberry Pi est actuellement hors ligne. En attendant qu'il redémarre, bats ton record sur <b>Flappy Crypt</b> !</p>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+    <div id="instructions">Appuie sur <b>Espace</b> ou <b>Clique</b> pour sauter</div>
+    <button class="btn-start" onclick="resetGame()">Recommencer</button>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const logoImg = document.getElementById('logoImg');
+
+        // Variables du jeu
+        let bird = { x: 50, y: 150, w: 40, h: 40, gravity: 0.6, lift: -10, velocity: 0 };
+        let pipes = [];
+        let frame = 0;
+        let score = 0;
+        let gameOver = false;
+
+        function createPipe() {
+            let gap = 150;
+            let minHeight = 50;
+            let height = Math.floor(Math.random() * (canvas.height - gap - (minHeight * 2))) + minHeight;
+            pipes.push({ x: canvas.width, top: height, bottom: canvas.height - height - gap });
+        }
+
+        function draw() {
+            // Background
+            ctx.fillStyle = "#1e293b";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Bird (Ton Logo)
+            ctx.drawImage(logoImg, bird.x, bird.y, bird.w, bird.h);
+
+            // Pipes
+            ctx.fillStyle = "#334155";
+            pipes.forEach(pipe => {
+                ctx.fillRect(pipe.x, 0, 50, pipe.top);
+                ctx.fillRect(pipe.x, canvas.height - pipe.bottom, 50, pipe.bottom);
+            });
+
+            // Score
+            ctx.fillStyle = "white";
+            ctx.font = "20px Arial";
+            ctx.fillText(`Score: ${score}`, 20, 30);
+
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0,0,0,0.5)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#38bdf8";
+                ctx.font = "30px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2);
+                ctx.font = "15px Arial";
+                ctx.fillText("Appuie pour rejouer", canvas.width/2, canvas.height/2 + 40);
+            }
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+
+            if (frame % 90 === 0) createPipe();
+
+            pipes.forEach((pipe, i) => {
+                pipe.x -= 3;
+                
+                // Collision
+                if (bird.x + bird.w > pipe.x && bird.x < pipe.x + 50 &&
+                    (bird.y < pipe.top || bird.y + bird.h > canvas.height - pipe.bottom)) {
+                    gameOver = true;
+                }
+
+                if (pipe.x === 50) score++;
+                if (pipe.x + 50 < 0) pipes.splice(i, 1);
+            });
+
+            if (bird.y + bird.h > canvas.height || bird.y < 0) gameOver = true;
+            frame++;
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        function jump() {
+            if (gameOver) { resetGame(); }
+            else { bird.velocity = bird.lift; }
+        }
+
+        function resetGame() {
+            bird.y = 150; bird.velocity = 0;
+            pipes = []; score = 0; frame = 0; gameOver = false;
+        }
+
+        window.addEventListener('keydown', (e) => { if(e.code === 'Space') jump(); });
+        canvas.addEventListener('mousedown', jump);
+        
+        loop();
+    </script>
+</body>
+</html>
